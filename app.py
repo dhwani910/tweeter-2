@@ -522,30 +522,158 @@ def tweets():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # # ...........................End Points For Tweet-likes.................................................
-# @app.route('/api/tweet-likes', methods=['GET','POST', 'DELETE'])
-# def tweet-likes():
+@app.route('/api/tweet_likes', methods=['GET','POST', 'DELETE'])
+def tweet_likes():
+    if request.method == 'GET':
+        conn = None
+        cursor = None
+        tweet_likes = None
+        tweetId = request.args.get("tweetId")
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT tweet_like.tweetId, tweet_like.userId, user.username FROM tweet_like JOIN user ON tweet_like.userId = user.id WHERE tweet_like.tweetId = ?", [tweetId])
+            tweet_likes = cursor.fetchall()
+            print(tweet_likes)
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (tweet_likes != None):
+                results = []
+                for tweet_like in tweet_likes:
+                    likes_data = {
+                        "tweetId": tweet_like[0],
+                        "userId": tweet_like[1],
+                        "username": tweet_like[2]
+                    }
+                    results.append(likes_data)
+                return Response(
+                    json.dumps(results, default=str),
+                    mimetype = "application/json",
+                    status=200
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'POST':
+        conn = None
+        cursor = None
+        results = None
+        tweetId = request.json.get("tweetId")
+        loginToken = request.json.get("loginToken")
+        
+
+        
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            new_like = cursor.fetchall()
+            print(new_like)
+            if (new_like[0][1] == loginToken):
+                cursor.execute("INSERT INTO tweet_like(tweetId, userId) VALUES (?, ?)", [tweetId, new_like[0][0]])
+                conn.commit()
+                results = cursor.rowcount
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results != None):
+                    return Response(
+                       "you liked this tweet!..",
+                       mimetype = "application/json",
+                       status=200
+                    ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'DELETE':
+        conn = None
+        cursor = None
+        results = None
+        loginToken = request.json.get("loginToken")
+        tweetId = request.json.get("tweetId")
+
+        try:
+            conn = connect()
+            cursor = conn.cursor()   
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            print(target)
+            if target[0][1] == loginToken:
+                cursor.execute("DELETE FROM tweet_like WHERE tweetId = ? AND userId = ?", [tweetId, target[0][0]])
+                conn.commit()
+                results = cursor.rowcount
+                print(results)  
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results != None):
+                return Response(
+                    "You unlike this tweet!..",
+                    mimetype = "text/html",
+                    status=204
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                )  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # # ...........................End Points For Comments.................................................
 # @app.route('/api/comments', methods=['GET','POST', 'PATCH', 'DELETE'])
 # def comments():
