@@ -231,32 +231,132 @@ def users():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # # ...........................End Points For Login.................................................
-# @app.route('/api/login', methods=['POST', 'DELETE'])
-# def login():
+@app.route('/api/login', methods=['POST', 'DELETE'])
+
+def login():
+    if request.method == 'POST':
+        conn = None
+        cursor = None
+        userId = None
+        results = None
+        email = request.json.get("email")
+        password = request.json.get("password")
+
+        
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, email, username, bio, birthdate, password FROM user WHERE email = ? AND password = ?", [email, password])
+            userId = cursor.fetchall()
+            loginToken = secrets.token_hex(16)
+            print(userId) 
+            print(loginToken)
+            if (userId != None):
+                cursor.execute("INSERT INTO user_session(userId, loginToken) VALUES (?, ?)", [userId[0][0], loginToken])
+                conn.commit()
+                results = cursor.rowcount
+            else:
+                print("wrong data")    
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results == 1):
+                    user_data = {
+                        "userId": userId[0][0],
+                        "email": userId[0][1],
+                        "username": userId[0][2],
+                        "bio": userId[0][3],
+                        "birthdate": userId[0][4],
+                        "loginToken": loginToken
+                    }
+                    return Response(
+                       json.dumps(user_data, default=str),
+                       mimetype = "application/json",
+                       status=200
+                    ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                )
+    elif request.method == 'DELETE':
+        conn = None
+        cursor = None
+        results = None
+        loginToken = request.json.get("loginToken")
+
+        try:
+            conn = connect()
+            cursor = conn.cursor()   
+            cursor.execute("DELETE FROM user_session WHERE loginToken = ?", [loginToken])  
+            conn.commit()
+            results = cursor.rowcount  
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results == 1):
+                return Response(
+                    "logout.....!",
+                    mimetype = "text/html",
+                    status=204
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # # ...........................End Points For Follows.................................................
 # @app.route('/api/follows', methods=['GET','POST', 'DELETE'])
 # def follows():
