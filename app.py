@@ -523,7 +523,7 @@ def tweets():
 
 
 # # ...........................End Points For Tweet-likes.................................................
-@app.route('/api/tweet_likes', methods=['GET','POST', 'DELETE'])
+@app.route('/api/tweet-likes', methods=['GET','POST', 'DELETE'])
 def tweet_likes():
     if request.method == 'GET':
         conn = None
@@ -647,36 +647,83 @@ def tweet_likes():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # # ...........................End Points For Comments.................................................
-# @app.route('/api/comments', methods=['GET','POST', 'PATCH', 'DELETE'])
-# def comments():
+@app.route('/api/comments', methods=['GET','POST', 'PATCH', 'DELETE'])
+def comments():
+    if request.method == 'GET':
+        conn = None
+        cursor = None
+        comments = None
+        tweetId = request.args.get("tweetId")
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            if (tweetId != "" and tweetId != None):
+                cursor.execute("SELECT comment.*, user.username FROM comment JOIN user ON comment.userId = user.id WHERE comment.tweetId = ?", [tweetId])
+                comments = cursor.fetchall()
+            elif (tweetId == "" and tweetId == None):
+                cursor.execute("SELECT * FROM comment")
+                comments = cursor.fetchall() 
+                print(comments)   
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (comments != None):
+                results = []
+                for comment in comments:
+                    result = {
+                        "commentId": comment[0],
+                        "tweetId": comment[1],
+                        "userId": comment[2],
+                        "content": comment[3],
+                        "createdAt": comment[4],
+                        "username": comment[5],
+                    }
+                    results.append(result)
+                return Response(
+                    json.dumps(results, default=str),
+                    mimetype = "application/json",
+                    status=200
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # # ...........................End Points For Comment-likes.................................................
 # @app.route('/api/comment-likes', methods=['GET','POST', 'DELETE'])
 # def comment-likes():
