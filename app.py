@@ -325,38 +325,6 @@ def login():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # # ...........................End Points For Follows.................................................
 # @app.route('/api/follows', methods=['GET','POST', 'DELETE'])
 # def follows():
@@ -364,8 +332,217 @@ def login():
 # @app.route('/api/followers', methods=['GET'])
 # def followers():
 # # ...........................End Points For Tweets.................................................
-# @app.route('/api/tweets', methods=['GET','POST', 'PATCH', 'DELETE'])
-# def tweets():
+@app.route('/api/tweets', methods=['GET','POST', 'PATCH', 'DELETE'])
+def tweets():
+    if request.method == 'GET':
+        conn = None
+        cursor = None
+        tweet_data = None
+        results = None
+        userId = request.args.get("userId")
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            if (userId != "" and userId != None):
+                cursor.execute("SELECT tweet.id, tweet.userId, user.username, tweet.content, tweet.createdAt FROM tweet JOIN user ON tweet.userId = user.id WHERE user.id = ?", [userId])
+            else:    
+                cursor.execute("SELECT tweet.id, tweet.userId, user.username, tweet.content, tweet.createdAt FROM tweet JOIN user ON tweet.userId = user.id")
+            results = cursor.fetchall()
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results != None):
+                tweets = []
+                for result in results:
+                    tweet = {
+                        "tweetId": result[0],
+                        "userId": result[1],
+                        "username": result[2],
+                        "content": result[3],
+                        "createdAt": result[4],
+                    }
+                    tweets.append(tweet)
+                return Response(
+                    json.dumps(tweets, default=str),
+                    mimetype = "application/json",
+                    status=200
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'POST':
+        conn = None
+        cursor = None
+        results = None
+        tweetId = None
+        content = request.json.get("content")
+        createdAt = request.json.get("createdAt")
+        loginToken = request.json.get("loginToken")
+        
+
+        
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_session.userId, user.username FROM user_session JOIN user ON user_session.userId = user.id WHERE user_session.loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            print(target)
+            if (len(target) == 1):
+                cursor.execute("INSERT INTO tweet(userId, content, createdAt) VALUES (?, ?, ?)", [target[0][0], content, createdAt])
+                conn.commit()
+                tweetId = cursor.lastrowid 
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (tweetId != None):
+                    tweet_data = {
+                        "tweetId": tweetId,
+                        "userId": target[0][0],
+                        "username": target[0][1],
+                        "content": content,
+                        "createdAt": createdAt
+                    }
+                    return Response(
+                       json.dumps(tweet_data, default=str),
+                       mimetype = "application/json",
+                       status=200
+                    ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'PATCH':
+        conn = None
+        cursor = None
+        results = None
+        newTweet_data = None
+        tweetId = request.json.get("tweetId")
+        content = request.json.get("content")
+        loginToken = request.json.get("loginToken")
+
+        
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall() 
+            print(target)
+            if target[0][1] == loginToken:
+                cursor.execute("UPDATE tweet SET content = ? WHERE id = ?", [content, tweetId])
+                conn.commit()
+            results = cursor.rowcount
+            print(results)
+            cursor.execute("SELECT * FROM tweet WHERE id = ?", [tweetId]) 
+            new_tweet = cursor.fetchall()  
+            print(new_tweet)                 
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results == 1):
+                    newTweet_data = {
+                        "tweetId": new_tweet[0][0],
+                        "content": new_tweet[0][1]
+                    }
+                    return Response(
+                       json.dumps(newTweet_data, default=str),
+                       mimetype = "application/json",
+                       status=200
+                    ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                )
+    elif request.method == 'DELETE':
+        conn = None
+        cursor = None
+        results = None
+        loginToken = request.json.get("loginToken")
+        tweetId = request.json.get("tweetId")
+
+        try:
+            conn = connect()
+            cursor = conn.cursor()   
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            print(target)
+            if target[0][1] == loginToken:
+                cursor.execute("DELETE FROM tweet WHERE id = ?", [tweetId])
+                conn.commit()
+                results = cursor.rowcount
+                print(results)  
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results == 1):
+                return Response(
+                    "Deleted!...",
+                    mimetype = "text/html",
+                    status=204
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                )              
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # # ...........................End Points For Tweet-likes.................................................
 # @app.route('/api/tweet-likes', methods=['GET','POST', 'DELETE'])
 # def tweet-likes():
