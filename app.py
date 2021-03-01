@@ -1,3 +1,5 @@
+# https://github.com/jimmyjames88/itc-tweeter-starter
+
 from flask import Flask, request, Response
 import mariadb
 import json
@@ -697,7 +699,161 @@ def comments():
                     mimetype="text/html",
                     status=500
                 ) 
+    elif request.method == 'POST':
+        conn = None
+        cursor = None
+        results = None
+        target = None
+        new_commentId = None
+        new_comment = None
+        loginToken = request.json.get("loginToken")
+        tweetId = request.json.get("tweetId")
+        content = request.json.get("content")
+        createdAt = request.json.get("createdAt")
+        
+        
 
+        
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            print(target)
+            results = cursor.rowcount
+            if (target[0][1] == loginToken):
+                cursor.execute("INSERT INTO comment(content, createdAt, tweetId, userId) VALUES(?, ?, ?, ?)", [content, createdAt, tweetId, target[0][0]])
+                new_commentId = cursor.lastrowid
+                conn.commit()
+                results = cursor.rowcount
+                cursor.execute("SELECT comment.*, user.username FROM comment JOIN user ON comment.userId = user.id WHERE comment.id = ?", [new_commentId])
+                new_comment = cursor.fetchall()
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results == 1):
+                comment_data = {
+                    "commentId": new_commentId,
+                    "tweetId": tweetId,
+                    "userId": target[0][0],
+                    "username": new_comment[0][5],
+                    "content": content,
+                    "createdAt": createdAt
+                }
+                return Response(
+                    json.dumps(comment_data, default=str),
+                    mimetype = "application/json",
+                    status=200
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                )             
+    elif request.method == 'PATCH':
+        conn = None
+        cursor = None
+        results = None
+        commentId = request.json.get("commentId")
+        content = request.json.get("content")
+        createdAt = request.json.get("createdAt")
+        loginToken = request.json.get("loginToken")
+
+        
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            cursor.execute("SELECT userId FROM comment WHERE id = ?", [commentId])
+            comment_target = cursor.fetchall() 
+            print(target)
+            if target[0][1] == loginToken and target[0][0] == comment_target[0][0]:
+                cursor.execute("UPDATE comment SET content = ? WHERE id = ?", [content, commentId])
+                conn.commit()
+                results = cursor.rowcount
+                print(results)
+            if (results != None):
+                cursor.execute("SELECT comment.*, user.username FROM user JOIN comment ON user.id = comment.userId WHERE comment.id = ?", [commentId]) 
+                new_comment = cursor.fetchall()  
+                print(new_comment)                 
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results == 1):
+                    newcomment_data = {
+                        "commentId": commentId,
+                        "tweetId": new_comment[0][1],
+                        "userId": new_comment[0][2],
+                        "username": new_comment[0][5],
+                        "content": content,
+                        "createdAt": createdAt
+                    }
+                    return Response(
+                       json.dumps(newcomment_data, default=str),
+                       mimetype = "application/json",
+                       status=200
+                    ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'DELETE':
+        conn = None
+        cursor = None
+        results = None
+        loginToken = request.json.get("loginToken")
+        commentId = request.json.get("commentId")
+
+        try:
+            conn = connect()
+            cursor = conn.cursor()   
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            print(target)
+            cursor.execute("SELECT userId FROM comment WHERE id = ?", [commentId])
+            comment_target = cursor.fetchall()
+            if target[0][1] == loginToken and target[0][0] == comment_target[0][0]:
+                cursor.execute("DELETE FROM comment WHERE id = ?", [commentId])
+                conn.commit()
+                results = cursor.rowcount
+                print(results)  
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results != None):
+                return Response(
+                    "Deleted!...",
+                    mimetype = "text/html",
+                    status=204
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                )                 
 
 
 
