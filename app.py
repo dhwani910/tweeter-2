@@ -712,8 +712,6 @@ def comments():
         createdAt = request.json.get("createdAt")
         
         
-
-        
         try:
             conn = connect()
             cursor = conn.cursor()
@@ -857,29 +855,124 @@ def comments():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # # ...........................End Points For Comment-likes.................................................
-# @app.route('/api/comment-likes', methods=['GET','POST', 'DELETE'])
-# def comment-likes():
+@app.route('/api/comment-likes', methods=['GET','POST', 'DELETE'])
+def comment_likes():
+    if request.method == 'GET':
+        conn = None
+        cursor = None
+        comment_likes = None
+        commentId = request.args.get("commentId")
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT comment_like.commentId, comment_like.userId, user.username FROM comment_like JOIN user ON comment_like.userId = user.id WHERE comment_like.commentId = ?", [commentId])
+            comment_likes = cursor.fetchall()
+            print(tweet_likes)
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (comment_likes != None):
+                results = []
+                for comment_like in comment_likes:
+                    likes_data = {
+                        "commentId": comment_like[0],
+                        "userId": comment_like[1],
+                        "username": comment_like[2]
+                    }
+                    results.append(likes_data)
+                return Response(
+                    json.dumps(results, default=str),
+                    mimetype = "application/json",
+                    status=200
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'POST':
+        conn = None
+        cursor = None
+        results = None
+        commentId = request.json.get("commentId")
+        loginToken = request.json.get("loginToken")
+         
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            new_like = cursor.fetchall()
+            print(new_like)
+            if (new_like[0][1] == loginToken):
+                cursor.execute("INSERT INTO comment_like(commentId, userId) VALUES (?, ?)", [commentId, new_like[0][0]])
+                conn.commit()
+                results = cursor.rowcount
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results != None):
+                    return Response(
+                       "you liked this comment!..",
+                       mimetype = "application/json",
+                       status=200
+                    ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'DELETE':
+        conn = None
+        cursor = None
+        results = None
+        loginToken = request.json.get("loginToken")
+        commentId = request.json.get("commentId")
+
+        try:
+            conn = connect()
+            cursor = conn.cursor()   
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            print(target)
+            if target[0][1] == loginToken:
+                cursor.execute("DELETE FROM comment_like WHERE commentId = ? AND userId = ?", [commentId, target[0][0]])
+                conn.commit()
+                results = cursor.rowcount
+                print(results)  
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results != None):
+                return Response(
+                    "You unlike this comment!..",
+                    mimetype = "text/html",
+                    status=204
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                )  
+
