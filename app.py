@@ -325,14 +325,187 @@ def login():
 
 
 
-
-
 # # ...........................End Points For Follows.................................................
-# @app.route('/api/follows', methods=['GET','POST', 'DELETE'])
-# def follows():
+@app.route('/api/follows', methods=['GET','POST', 'DELETE'])
+def follows():
+    if request.method == 'GET':
+        conn = None
+        cursor = None
+        results = None
+        userId = request.args.get("userId")
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT follow.followerId, user.email, user.username, user.bio, user.birthdate FROM follow JOIN user ON follow.followerId = user.id WHERE follow.userId = ?", [userId])
+            results = cursor.fetchall()
+            print(results)
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results != None):
+                follows = []
+                for result in results:
+                    follows_data = {
+                        "userId": result[0],
+                        "email": result[1],
+                        "username": result[2],
+                        "bio": result[3],
+                        "birthdate": result[4],
+                    }
+                    follows.append(follows_data)
+                return Response(
+                    json.dumps(follows, default=str),
+                    mimetype = "application/json",
+                    status=200
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'POST':
+        conn = None
+        cursor = None
+        results = None
+        followerId = request.json.get("followerId")
+        loginToken = request.json.get("loginToken")
+        
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT userId FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            print(target)
+            if (target[0][0] != followerId):
+                cursor.execute("INSERT INTO follow(followerId, userId) VALUES (?, ?)", [followerId, target[0][0]])
+                conn.commit()
+                results = cursor.rowcount 
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results == 1):
+                    return Response(
+                       "you are following this user!....",
+                       mimetype = "application/json",
+                       status=200
+                    ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+    elif request.method == 'DELETE':
+        conn = None
+        cursor = None
+        results = None
+        loginToken = request.json.get("loginToken")
+        followerId = request.json.get("followerId")
+
+        try:
+            conn = connect()
+            cursor = conn.cursor()   
+            cursor.execute("SELECT * FROM user_session WHERE loginToken = ?", [loginToken])
+            target = cursor.fetchall()
+            print(target)
+            if (target[0][1] == loginToken and target[0][0] != followerId):
+                cursor.execute("DELETE FROM follow WHERE userId = ? AND followerId = ?", [target[0][0], followerId])
+                conn.commit()
+                results = cursor.rowcount
+                print(results)  
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results == 1):
+                return Response(
+                    "unfollow!...",
+                    mimetype = "text/html",
+                    status=204
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                )   
+
+
+
+
 # # ...........................End Points For Followers.................................................
-# @app.route('/api/followers', methods=['GET'])
-# def followers():
+@app.route('/api/followers', methods=['GET'])
+def followers():
+    if request.method == 'GET':
+        conn = None
+        cursor = None
+        results= None
+        userId = request.args.get("userId")
+        try:
+            conn = connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT follow.userId, user.email, user.username, user.bio, user.birthdate FROM follow JOIN user ON follow.userId = user.id WHERE follow.followerId = ?", [userId])
+            results = cursor.fetchall()
+            print(results)
+        except Exception as ex:
+            print("error")
+            print(ex)
+        finally:
+            if (cursor != None):
+                cursor.close()
+            if (conn != None):
+                conn.rollback()
+                conn.close()
+            if (results != None):
+                followers = []
+                for result in results:
+                    followers_data = {
+                        "userId": result[0],
+                        "email": result[1],
+                        "username": result[2],
+                        "bio": result[3],
+                        "birthdate": result[4],
+                    }
+                    followers.append(followers_data)
+                return Response(
+                    json.dumps(followers, default=str),
+                    mimetype = "application/json",
+                    status=200
+                ) 
+            else: 
+                return Response(
+                    "something wrong..",
+                    mimetype="text/html",
+                    status=500
+                ) 
+
+
+
+
+
+
+
+
+
+
 # # ...........................End Points For Tweets.................................................
 @app.route('/api/tweets', methods=['GET','POST', 'PATCH', 'DELETE'])
 def tweets():
